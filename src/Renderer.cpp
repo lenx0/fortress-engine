@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include <iostream>
+#include <glm/gtc/matrix_transform.hpp>
 
 // Vertex shader source
 const char* vertexShaderSource = R"(
@@ -23,9 +24,36 @@ void main()
 }
 )";
 
+// Color vertex shader source (with MVP matrix)
+const char* colorVertexShaderSource = R"(
+#version 330 core
+layout (location = 0) in vec3 aPos;
+
+uniform mat4 uViewProjection;
+uniform mat4 uModel;
+
+void main()
+{
+    gl_Position = uViewProjection * uModel * vec4(aPos, 1.0);
+}
+)";
+
+// Color fragment shader source
+const char* colorFragmentShaderSource = R"(
+#version 330 core
+out vec4 FragColor;
+
+uniform vec4 uColor;
+
+void main()
+{
+    FragColor = uColor;
+}
+)";
+
 Renderer::Renderer()
-    : m_DefaultShaderProgram(0), m_TriangleVAO(0), m_TriangleVBO(0), 
-      m_QuadVAO(0), m_QuadVBO(0), m_QuadEBO(0)
+    : m_DefaultShaderProgram(0), m_ColorShaderProgram(0), m_TriangleVAO(0), m_TriangleVBO(0), 
+      m_QuadVAO(0), m_QuadVBO(0), m_QuadEBO(0), m_ViewProjectionLocation(-1), m_ModelLocation(-1), m_ColorLocation(-1)
 {
 }
 
@@ -33,6 +61,7 @@ Renderer::~Renderer()
 {
     // Cleanup
     if (m_DefaultShaderProgram) glDeleteProgram(m_DefaultShaderProgram);
+    if (m_ColorShaderProgram) glDeleteProgram(m_ColorShaderProgram);
     if (m_TriangleVAO) glDeleteVertexArrays(1, &m_TriangleVAO);
     if (m_TriangleVBO) glDeleteBuffers(1, &m_TriangleVBO);
     if (m_QuadVAO) glDeleteVertexArrays(1, &m_QuadVAO);
@@ -48,6 +77,14 @@ void Renderer::Initialize()
     glEnable(GL_DEPTH_TEST);
     
     CreateDefaultShaders();
+    
+    // Create color shader
+    m_ColorShaderProgram = CreateShader(colorVertexShaderSource, colorFragmentShaderSource);
+    
+    // Get uniform locations
+    m_ViewProjectionLocation = glGetUniformLocation(m_ColorShaderProgram, "uViewProjection");
+    m_ModelLocation = glGetUniformLocation(m_ColorShaderProgram, "uModel");
+    m_ColorLocation = glGetUniformLocation(m_ColorShaderProgram, "uColor");
     
     // Create triangle
     float triangleVertices[] = {
@@ -119,6 +156,30 @@ void Renderer::DrawTriangle()
 void Renderer::DrawQuad()
 {
     glUseProgram(m_DefaultShaderProgram);
+    glBindVertexArray(m_QuadVAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+
+void Renderer::SetViewProjectionMatrix(const glm::mat4& viewProjection)
+{
+    glUseProgram(m_ColorShaderProgram);
+    glUniformMatrix4fv(m_ViewProjectionLocation, 1, GL_FALSE, &viewProjection[0][0]);
+}
+
+void Renderer::DrawQuad(const glm::vec2& position, const glm::vec2& size, const glm::vec4& color)
+{
+    // Create model matrix for this quad
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(position.x, position.y, 0.0f));
+    model = glm::scale(model, glm::vec3(size.x, size.y, 1.0f));
+    
+    // Use color shader
+    glUseProgram(m_ColorShaderProgram);
+    glUniformMatrix4fv(m_ModelLocation, 1, GL_FALSE, &model[0][0]);
+    glUniform4fv(m_ColorLocation, 1, &color[0]);
+    
+    // Draw quad
     glBindVertexArray(m_QuadVAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

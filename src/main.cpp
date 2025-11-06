@@ -1,21 +1,32 @@
 #include "Application.h"
 #include "Input.h"
 #include "KeyCodes.h"
+#include "Camera.h"
+#include "Player.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <glm/glm.hpp>
 
-class GameApplication : public Application
+class IsometricGame : public Application
 {
 public:
-    GameApplication() = default;
-    ~GameApplication() = default;
+    IsometricGame() = default;
+    ~IsometricGame() = default;
 
 protected:
     void OnInitialize() override
     {
-        std::cout << "Game initialized!" << std::endl;
+        std::cout << "Isometric Game initialized!" << std::endl;
+        
+        // Create camera
+        m_Camera = std::make_unique<Camera>(GetWindow()->GetWidth(), GetWindow()->GetHeight());
+        m_Camera->SetPosition(glm::vec2(0.0f, 0.0f));
+        m_Camera->SetZoom(2.0f);
+        
+        // Create player
+        m_Player = std::make_unique<Player>(glm::vec2(0.0f, 0.0f));
+        
         ShowHelp();
     }
 
@@ -24,47 +35,41 @@ protected:
         // Handle input
         HandleInput(deltaTime);
         
-        // Other game logic can go here
+        // Update player
+        m_Player->Update(deltaTime);
+        
+        // Update camera to follow player
+        UpdateCamera(deltaTime);
     }
 
     void OnRender() override
     {
-        // Choose background color
-        if (m_UseAnimatedBackground)
-        {
-            // Animated background
-            static float totalTime = 0.0f;
-            totalTime += 0.016f; // Approximate delta time
-            glm::vec4 animatedColor;
-            animatedColor.r = (std::sin(totalTime) + 1.0f) * 0.5f;
-            animatedColor.g = (std::cos(totalTime * 0.7f) + 1.0f) * 0.5f;
-            animatedColor.b = (std::sin(totalTime * 0.3f) + 1.0f) * 0.5f;
-            animatedColor.a = 1.0f;
-            GetRenderer()->Clear(animatedColor);
-        }
-        else
-        {
-            // Static color
-            GetRenderer()->Clear(m_BackgroundColor);
-        }
+        // Clear with dark background
+        GetRenderer()->Clear(glm::vec4(0.1f, 0.1f, 0.15f, 1.0f));
         
-        // Draw triangle if visible
-        if (m_ShowTriangle)
-        {
-            GetRenderer()->DrawTriangle();
-        }
+        // Set camera matrices
+        glm::mat4 viewProjection = m_Camera->GetProjectionMatrix() * m_Camera->GetViewMatrix();
+        GetRenderer()->SetViewProjectionMatrix(viewProjection);
+        
+        // Render world
+        RenderWorld();
+        
+        // Render player
+        RenderPlayer();
     }
 
     void OnShutdown() override
     {
-        std::cout << "Game shutting down..." << std::endl;
+        std::cout << "Isometric game shutting down..." << std::endl;
     }
 
 private:
-    glm::vec4 m_BackgroundColor = glm::vec4(0.2f, 0.3f, 0.3f, 1.0f);
-    bool m_ShowTriangle = true;
-    bool m_UseAnimatedBackground = true;
-    float m_TriangleSpeed = 2.0f;
+    std::unique_ptr<Camera> m_Camera;
+    std::unique_ptr<Player> m_Player;
+    
+    // Camera settings
+    bool m_FollowPlayer = true;
+    float m_CameraLerpSpeed = 5.0f;
     
     void HandleInput(float deltaTime)
     {
@@ -75,56 +80,34 @@ private:
             glfwSetWindowShouldClose(GetWindow()->GetNativeWindow(), GLFW_TRUE);
         }
         
-        // Toggle triangle visibility
-        if (Input::IsKeyPressed(Key::Space))
+        // Camera controls
+        if (Input::IsKeyPressed(Key::C))
         {
-            m_ShowTriangle = !m_ShowTriangle;
-            std::cout << "SPACE pressed - Triangle visibility: " << (m_ShowTriangle ? "ON" : "OFF") << std::endl;
+            m_FollowPlayer = !m_FollowPlayer;
+            std::cout << "Camera follow: " << (m_FollowPlayer ? "ON" : "OFF") << std::endl;
         }
         
-        // Change background colors with number keys
-        if (Input::IsKeyPressed(Key::Num1))
+        // Manual camera movement (when not following player)
+        if (!m_FollowPlayer)
         {
-            m_BackgroundColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
-            m_UseAnimatedBackground = false;
-            std::cout << "Key 1 pressed - Background: Red" << std::endl;
-        }
-        if (Input::IsKeyPressed(Key::Num2))
-        {
-            m_BackgroundColor = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
-            m_UseAnimatedBackground = false;
-            std::cout << "Key 2 pressed - Background: Green" << std::endl;
-        }
-        if (Input::IsKeyPressed(Key::Num3))
-        {
-            m_BackgroundColor = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f); // Blue
-            m_UseAnimatedBackground = false;
-            std::cout << "Key 3 pressed - Background: Blue" << std::endl;
-        }
-        if (Input::IsKeyPressed(Key::Num0))
-        {
-            // Reset to animated background
-            m_UseAnimatedBackground = true;
-            std::cout << "Key 0 pressed - Background: Animated" << std::endl;
+            glm::vec2 cameraMove(0.0f);
+            if (Input::IsKeyHeld(Key::Up)) cameraMove.y += 1.0f;
+            if (Input::IsKeyHeld(Key::Down)) cameraMove.y -= 1.0f;
+            if (Input::IsKeyHeld(Key::Left)) cameraMove.x -= 1.0f;
+            if (Input::IsKeyHeld(Key::Right)) cameraMove.x += 1.0f;
+            
+            if (glm::length(cameraMove) > 0.0f)
+            {
+                m_Camera->Move(glm::normalize(cameraMove) * 5.0f * deltaTime);
+            }
         }
         
-        // Mouse input demonstration
-        if (Input::IsMouseButtonPressed(MouseButton::Left))
-        {
-            glm::vec2 mousePos = Input::GetMousePosition();
-            std::cout << "Left click at: (" << mousePos.x << ", " << mousePos.y << ")" << std::endl;
-        }
-        
-        if (Input::IsMouseButtonPressed(MouseButton::Right))
-        {
-            std::cout << "Right click detected!" << std::endl;
-        }
-        
-        // Mouse scroll demonstration
+        // Camera zoom
         float scroll = Input::GetScrollDelta();
         if (scroll != 0.0f)
         {
-            std::cout << "Mouse scroll: " << scroll << std::endl;
+            m_Camera->Zoom(scroll * 0.1f);
+            std::cout << "Camera zoom: " << m_Camera->GetZoom() << std::endl;
         }
         
         // Show help
@@ -134,18 +117,69 @@ private:
         }
     }
     
+    void UpdateCamera(float deltaTime)
+    {
+        if (m_FollowPlayer)
+        {
+            // Convert player world position to isometric coordinates
+            glm::vec2 playerIsoPos = m_Camera->WorldToIsometric(m_Player->GetPosition());
+            
+            // Smooth camera following
+            glm::vec2 currentPos = m_Camera->GetPosition();
+            glm::vec2 targetPos = playerIsoPos;
+            glm::vec2 newPos = glm::mix(currentPos, targetPos, m_CameraLerpSpeed * deltaTime);
+            
+            m_Camera->SetPosition(newPos);
+        }
+    }
+    
+    void RenderWorld()
+    {
+        // Render a simple grid of floor tiles
+        const int gridSize = 10;
+        const float tileSize = 32.0f;
+        
+        for (int x = -gridSize; x <= gridSize; x++)
+        {
+            for (int y = -gridSize; y <= gridSize; y++)
+            {
+                // Convert world coordinates to isometric screen coordinates
+                glm::vec2 worldPos(x, y);
+                glm::vec2 isoPos = m_Camera->WorldToIsometric(worldPos);
+                
+                // Checkerboard pattern
+                glm::vec4 tileColor = ((x + y) % 2 == 0) ? 
+                    glm::vec4(0.3f, 0.6f, 0.3f, 1.0f) :  // Green
+                    glm::vec4(0.2f, 0.5f, 0.2f, 1.0f);   // Darker green
+                
+                GetRenderer()->DrawQuad(isoPos, glm::vec2(tileSize, tileSize * 0.5f), tileColor);
+            }
+        }
+    }
+    
+    void RenderPlayer()
+    {
+        // Convert player world position to isometric screen coordinates
+        glm::vec2 playerIsoPos = m_Camera->WorldToIsometric(m_Player->GetPosition());
+        
+        // Render player as a red diamond/square
+        glm::vec4 playerColor = m_Player->IsMoving() ? 
+            glm::vec4(1.0f, 0.3f, 0.3f, 1.0f) :  // Bright red when moving
+            glm::vec4(0.8f, 0.2f, 0.2f, 1.0f);   // Darker red when idle
+        
+        GetRenderer()->DrawQuad(playerIsoPos, glm::vec2(24.0f, 24.0f), playerColor);
+    }
+    
     void ShowHelp()
     {
-        std::cout << "\n=== INPUT CONTROLS ===" << std::endl;
-        std::cout << "ESC     - Close application" << std::endl;
-        std::cout << "SPACE   - Toggle triangle visibility" << std::endl;
-        std::cout << "1       - Red background" << std::endl;
-        std::cout << "2       - Green background" << std::endl;
-        std::cout << "3       - Blue background" << std::endl;
-        std::cout << "0       - Animated background" << std::endl;
+        std::cout << "\n=== Isometric Game Controls ===" << std::endl;
+        std::cout << "WASD    - Move player" << std::endl;
+        std::cout << "C       - Toggle camera follow mode" << std::endl;
+        std::cout << "Arrows  - Move camera (when not following)" << std::endl;
+        std::cout << "Scroll  - Zoom camera" << std::endl;
+        std::cout << "ESC     - Exit application" << std::endl;
         std::cout << "H       - Show this help" << std::endl;
-        std::cout << "Mouse   - Click and scroll for interaction" << std::endl;
-        std::cout << "=====================\n" << std::endl;
+        std::cout << "================================\n" << std::endl;
     }
 };
 
@@ -153,7 +187,7 @@ int main()
 {
     try
     {
-        GameApplication app;
+        IsometricGame app;
         app.Run();
     }
     catch (const std::exception& e)

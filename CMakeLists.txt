@@ -12,6 +12,8 @@ add_executable(${PROJECT_NAME}
     src/Window.cpp
     src/Renderer.cpp
     src/Input.cpp
+    src/Camera.cpp
+    src/Player.cpp
 )
 
 # Include directories
