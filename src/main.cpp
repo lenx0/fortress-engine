@@ -3,9 +3,13 @@
 #include "KeyCodes.h"
 #include "Camera.h"
 #include "Player.h"
+#include "Texture.h"
+#include "Sprite.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <vector>
+#include <cmath>
 #include <glm/glm.hpp>
 
 class IsometricGame : public Application
@@ -26,6 +30,9 @@ protected:
         
         // Create player
         m_Player = std::make_unique<Player>(glm::vec2(0.0f, 0.0f));
+        
+        // Create a simple test texture for the player
+        CreatePlayerTexture();
         
         ShowHelp();
     }
@@ -162,12 +169,15 @@ private:
         // Convert player world position to isometric screen coordinates
         glm::vec2 playerIsoPos = m_Camera->WorldToIsometric(m_Player->GetPosition());
         
-        // Render player as a red diamond/square
-        glm::vec4 playerColor = m_Player->IsMoving() ? 
-            glm::vec4(1.0f, 0.3f, 0.3f, 1.0f) :  // Bright red when moving
-            glm::vec4(0.8f, 0.2f, 0.2f, 1.0f);   // Darker red when idle
-        
-        GetRenderer()->DrawQuad(playerIsoPos, glm::vec2(24.0f, 24.0f), playerColor);
+        // Get player sprite
+        auto playerSprite = m_Player->GetSprite();
+        if (playerSprite) {
+            // Update sprite position to isometric coordinates
+            playerSprite->SetPosition(playerIsoPos);
+            
+            // Render using sprite system
+            GetRenderer()->DrawSprite(*playerSprite);
+        }
     }
     
     void ShowHelp()
@@ -180,6 +190,78 @@ private:
         std::cout << "ESC     - Exit application" << std::endl;
         std::cout << "H       - Show this help" << std::endl;
         std::cout << "================================\n" << std::endl;
+    }
+    
+    void CreatePlayerTexture()
+    {
+        // Create a simple 32x32 player texture procedurally
+        const int size = 32;
+        std::vector<unsigned char> pixels(size * size * 4); // RGBA
+        
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                int index = (y * size + x) * 4;
+                
+                // Create a simple character shape
+                bool isBody = false;
+                bool isHead = false;
+                
+                // Head (circle in upper part)
+                int headCenterX = size / 2;
+                int headCenterY = size / 4;
+                int headRadius = size / 6;
+                float headDist = sqrt((x - headCenterX) * (x - headCenterX) + (y - headCenterY) * (y - headCenterY));
+                isHead = headDist <= headRadius;
+                
+                // Body (rectangle in lower part)
+                isBody = (x >= size/3 && x <= 2*size/3 && y >= size/2 && y <= 3*size/4);
+                
+                // Arms (small rectangles on sides)
+                bool isArms = (y >= size/2 && y <= 2*size/3) && 
+                             ((x >= size/6 && x <= size/3) || (x >= 2*size/3 && x <= 5*size/6));
+                
+                // Legs (rectangles at bottom)
+                bool isLegs = (y >= 3*size/4 && y <= 7*size/8) && 
+                             ((x >= size/3 && x <= size/2) || (x >= size/2 && x <= 2*size/3));
+                
+                if (isHead) {
+                    // Pink/flesh color for head
+                    pixels[index] = 255;     // R
+                    pixels[index + 1] = 200; // G
+                    pixels[index + 2] = 180; // B
+                    pixels[index + 3] = 255; // A
+                } else if (isBody || isArms) {
+                    // Blue shirt
+                    pixels[index] = 50;      // R
+                    pixels[index + 1] = 100; // G
+                    pixels[index + 2] = 200; // B
+                    pixels[index + 3] = 255; // A
+                } else if (isLegs) {
+                    // Brown pants
+                    pixels[index] = 139;     // R
+                    pixels[index + 1] = 69;  // G
+                    pixels[index + 2] = 19;  // B
+                    pixels[index + 3] = 255; // A
+                } else {
+                    // Transparent background
+                    pixels[index] = 0;       // R
+                    pixels[index + 1] = 0;   // G
+                    pixels[index + 2] = 0;   // B
+                    pixels[index + 3] = 0;   // A (transparent)
+                }
+            }
+        }
+        
+        // Create texture from pixel data
+        auto playerTexture = std::make_shared<Texture>();
+        if (playerTexture->LoadFromMemory(pixels.data(), size, size, 4)) {
+            // Apply texture to player
+            m_Player->SetTexture(playerTexture);
+            std::cout << "Created procedural player texture (" << size << "x" << size << ")" << std::endl;
+            std::cout << "Texture ID: " << playerTexture->GetID() << ", Valid: " << playerTexture->IsValid() << std::endl;
+        } else {
+            std::cerr << "Failed to create player texture" << std::endl;
+        }
     }
 };
 

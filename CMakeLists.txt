@@ -14,6 +14,8 @@ add_executable(${PROJECT_NAME}
     src/Input.cpp
     src/Camera.cpp
     src/Player.cpp
+    src/Texture.cpp
+    src/Sprite.cpp
 )
 
 # Include directories
@@ -26,12 +28,14 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 find_package(OpenGL REQUIRED)
 target_link_libraries(${PROJECT_NAME} OpenGL::GL)
 
-# For Windows, we'll use vcpkg to manage GLFW, GLAD and GLM
+# For Windows, we'll use vcpkg to manage GLFW, GLAD, GLM and STB
 if(WIN32)
     find_package(glfw3 CONFIG REQUIRED)
     find_package(glad CONFIG REQUIRED)
     find_package(glm CONFIG REQUIRED)
+    find_package(Stb REQUIRED)
     target_link_libraries(${PROJECT_NAME} glfw glad::glad glm::glm-header-only)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 endif()
 
 # Set output directory
