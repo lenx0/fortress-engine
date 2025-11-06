@@ -53,7 +53,9 @@ void Window::Init(const std::string& title, unsigned int width, unsigned int hei
     // Set window user pointer for callbacks
     glfwSetWindowUserPointer(m_Window, &m_Data);
 
-    // Set GLFW callbacks
+    // Note: Input callbacks will be set by Input::Initialize()
+    // Only set essential window callbacks here
+    
     glfwSetWindowSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
     {
         WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);

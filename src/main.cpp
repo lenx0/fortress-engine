@@ -1,4 +1,8 @@
 #include "Application.h"
+#include "Input.h"
+#include "KeyCodes.h"
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <iostream>
 #include <glm/glm.hpp>
 
@@ -12,27 +16,43 @@ protected:
     void OnInitialize() override
     {
         std::cout << "Game initialized!" << std::endl;
+        ShowHelp();
     }
 
     void OnUpdate(float deltaTime) override
     {
-        // Update game logic here
-        static float totalTime = 0.0f;
-        totalTime += deltaTime;
+        // Handle input
+        HandleInput(deltaTime);
         
-        // Change background color over time
-        m_BackgroundColor.r = (std::sin(totalTime) + 1.0f) * 0.5f;
-        m_BackgroundColor.g = (std::cos(totalTime * 0.7f) + 1.0f) * 0.5f;
-        m_BackgroundColor.b = (std::sin(totalTime * 0.3f) + 1.0f) * 0.5f;
+        // Other game logic can go here
     }
 
     void OnRender() override
     {
-        // Set background color
-        GetRenderer()->Clear(m_BackgroundColor);
+        // Choose background color
+        if (m_UseAnimatedBackground)
+        {
+            // Animated background
+            static float totalTime = 0.0f;
+            totalTime += 0.016f; // Approximate delta time
+            glm::vec4 animatedColor;
+            animatedColor.r = (std::sin(totalTime) + 1.0f) * 0.5f;
+            animatedColor.g = (std::cos(totalTime * 0.7f) + 1.0f) * 0.5f;
+            animatedColor.b = (std::sin(totalTime * 0.3f) + 1.0f) * 0.5f;
+            animatedColor.a = 1.0f;
+            GetRenderer()->Clear(animatedColor);
+        }
+        else
+        {
+            // Static color
+            GetRenderer()->Clear(m_BackgroundColor);
+        }
         
-        // Draw a triangle in the center
-        GetRenderer()->DrawTriangle();
+        // Draw triangle if visible
+        if (m_ShowTriangle)
+        {
+            GetRenderer()->DrawTriangle();
+        }
     }
 
     void OnShutdown() override
@@ -42,6 +62,91 @@ protected:
 
 private:
     glm::vec4 m_BackgroundColor = glm::vec4(0.2f, 0.3f, 0.3f, 1.0f);
+    bool m_ShowTriangle = true;
+    bool m_UseAnimatedBackground = true;
+    float m_TriangleSpeed = 2.0f;
+    
+    void HandleInput(float deltaTime)
+    {
+        // Close application
+        if (Input::IsKeyPressed(Key::Escape))
+        {
+            std::cout << "ESC pressed - closing application" << std::endl;
+            glfwSetWindowShouldClose(GetWindow()->GetNativeWindow(), GLFW_TRUE);
+        }
+        
+        // Toggle triangle visibility
+        if (Input::IsKeyPressed(Key::Space))
+        {
+            m_ShowTriangle = !m_ShowTriangle;
+            std::cout << "SPACE pressed - Triangle visibility: " << (m_ShowTriangle ? "ON" : "OFF") << std::endl;
+        }
+        
+        // Change background colors with number keys
+        if (Input::IsKeyPressed(Key::Num1))
+        {
+            m_BackgroundColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
+            m_UseAnimatedBackground = false;
+            std::cout << "Key 1 pressed - Background: Red" << std::endl;
+        }
+        if (Input::IsKeyPressed(Key::Num2))
+        {
+            m_BackgroundColor = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+            m_UseAnimatedBackground = false;
+            std::cout << "Key 2 pressed - Background: Green" << std::endl;
+        }
+        if (Input::IsKeyPressed(Key::Num3))
+        {
+            m_BackgroundColor = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f); // Blue
+            m_UseAnimatedBackground = false;
+            std::cout << "Key 3 pressed - Background: Blue" << std::endl;
+        }
+        if (Input::IsKeyPressed(Key::Num0))
+        {
+            // Reset to animated background
+            m_UseAnimatedBackground = true;
+            std::cout << "Key 0 pressed - Background: Animated" << std::endl;
+        }
+        
+        // Mouse input demonstration
+        if (Input::IsMouseButtonPressed(MouseButton::Left))
+        {
+            glm::vec2 mousePos = Input::GetMousePosition();
+            std::cout << "Left click at: (" << mousePos.x << ", " << mousePos.y << ")" << std::endl;
+        }
+        
+        if (Input::IsMouseButtonPressed(MouseButton::Right))
+        {
+            std::cout << "Right click detected!" << std::endl;
+        }
+        
+        // Mouse scroll demonstration
+        float scroll = Input::GetScrollDelta();
+        if (scroll != 0.0f)
+        {
+            std::cout << "Mouse scroll: " << scroll << std::endl;
+        }
+        
+        // Show help
+        if (Input::IsKeyPressed(Key::H))
+        {
+            ShowHelp();
+        }
+    }
+    
+    void ShowHelp()
+    {
+        std::cout << "\n=== INPUT CONTROLS ===" << std::endl;
+        std::cout << "ESC     - Close application" << std::endl;
+        std::cout << "SPACE   - Toggle triangle visibility" << std::endl;
+        std::cout << "1       - Red background" << std::endl;
+        std::cout << "2       - Green background" << std::endl;
+        std::cout << "3       - Blue background" << std::endl;
+        std::cout << "0       - Animated background" << std::endl;
+        std::cout << "H       - Show this help" << std::endl;
+        std::cout << "Mouse   - Click and scroll for interaction" << std::endl;
+        std::cout << "=====================\n" << std::endl;
+    }
 };
 
 int main()

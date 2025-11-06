@@ -2,6 +2,7 @@
 
 #include "Window.h"
 #include "Renderer.h"
+#include "Input.h"
 #include <memory>
 
 class Application

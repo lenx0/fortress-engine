@@ -11,10 +11,14 @@ add_executable(${PROJECT_NAME}
     src/Application.cpp
     src/Window.cpp
     src/Renderer.cpp
+    src/Input.cpp
 )
 
 # Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE include)
+target_include_directories(${PROJECT_NAME} PRIVATE 
+    include
+    ${CMAKE_PREFIX_PATH}/include
+)
 
 # Find OpenGL
 find_package(OpenGL REQUIRED)
@@ -25,7 +29,7 @@ if(WIN32)
     find_package(glfw3 CONFIG REQUIRED)
     find_package(glad CONFIG REQUIRED)
     find_package(glm CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} glfw glad::glad glm::glm)
+    target_link_libraries(${PROJECT_NAME} glfw glad::glad glm::glm-header-only)
 endif()
 
 # Set output directory

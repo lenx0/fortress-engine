@@ -15,6 +15,9 @@ Application::Application()
     m_Renderer = std::make_unique<Renderer>();
     m_Renderer->Initialize();
     
+    // Initialize input system
+    Input::Initialize(m_Window->GetNativeWindow());
+    
     std::cout << "Application initialized successfully!" << std::endl;
 }
 
@@ -36,7 +39,8 @@ void Application::Run()
         
         // Update
         m_Window->OnUpdate();
-        OnUpdate(deltaTime);
+        OnUpdate(deltaTime);  // Handle input BEFORE updating states
+        Input::Update();      // Update states AFTER handling input
         
         // Render
         m_Renderer->Clear();
