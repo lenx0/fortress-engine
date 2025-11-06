@@ -1,6 +1,10 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <memory>
+
+class Texture;
+class Sprite;
 
 class Player
 {
@@ -16,6 +20,10 @@ public:
     void SetPosition(const glm::vec2& position);
     
     bool IsMoving() const { return glm::length(m_Velocity) > 0.1f; }
+    
+    // Sprite methods
+    void SetTexture(std::shared_ptr<Texture> texture);
+    std::shared_ptr<Sprite> GetSprite() const { return m_Sprite; }
 
 private:
     glm::vec2 m_Position;
@@ -25,4 +33,6 @@ private:
     float m_MoveSpeed;
     float m_Acceleration;
     float m_Friction;
+    
+    std::shared_ptr<Sprite> m_Sprite;
 };

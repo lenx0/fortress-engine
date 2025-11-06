@@ -1,6 +1,8 @@
 #include "Player.h"
 #include "Input.h"
 #include "KeyCodes.h"
+#include "Sprite.h"
+#include "Texture.h"
 #include <iostream>
 #include <algorithm>
 
@@ -11,6 +13,12 @@ Player::Player(const glm::vec2& startPosition)
     m_MoveSpeed = 4.0f;      // Units per second
     m_Acceleration = 20.0f;  // How fast we reach max speed
     m_Friction = 15.0f;      // How fast we stop when no input
+    
+    // Create default sprite (will use colored quad if no texture)
+    m_Sprite = std::make_shared<Sprite>();
+    m_Sprite->SetPosition(m_Position);
+    m_Sprite->SetSize(glm::vec2(24.0f, 24.0f));
+    m_Sprite->SetColor(glm::vec4(0.8f, 0.2f, 0.2f, 1.0f)); // Red color
     
     std::cout << "Player created at position (" << m_Position.x << ", " << m_Position.y << ")" << std::endl;
 }
@@ -34,6 +42,18 @@ void Player::Update(float deltaTime)
     
     // Update position
     m_Position += m_Velocity * deltaTime;
+    
+    // Update sprite position and color based on movement
+    if (m_Sprite) {
+        m_Sprite->SetPosition(m_Position);
+        
+        // Change color based on movement
+        if (IsMoving()) {
+            m_Sprite->SetColor(glm::vec4(1.0f, 0.3f, 0.3f, 1.0f)); // Bright red when moving
+        } else {
+            m_Sprite->SetColor(glm::vec4(0.8f, 0.2f, 0.2f, 1.0f)); // Darker red when idle
+        }
+    }
     
     // Reset input direction for next frame
     m_InputDirection = glm::vec2(0.0f, 0.0f);
@@ -86,9 +106,22 @@ void Player::HandleInput(float deltaTime)
 void Player::SetPosition(const glm::vec2& position)
 {
     m_Position = position;
+    if (m_Sprite) {
+        m_Sprite->SetPosition(position);
+    }
 }
 
 void Player::Move(const glm::vec2& direction, float deltaTime)
 {
     m_Position += direction * m_MoveSpeed * deltaTime;
+    if (m_Sprite) {
+        m_Sprite->SetPosition(m_Position);
+    }
+}
+
+void Player::SetTexture(std::shared_ptr<Texture> texture)
+{
+    if (m_Sprite) {
+        m_Sprite->SetTexture(texture);
+    }
 }
